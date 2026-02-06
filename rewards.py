@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
 REWARD_DECAY = -4.0     #can be tweaked for reward sensitivity
 SELF_LEVEL_GAIN = 2.0
-def stand_reward(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg) -> torch.Tensor:
+def orientation_reward(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg) -> torch.Tensor:
     #Type hinting for object type RigidObject
     asset: RigidObject = env.scene[asset_cfg.name]
 
@@ -41,25 +41,27 @@ def self_leveling_reward(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg) -> t
     
     return SELF_LEVEL_GAIN * torch.tanh(corrective_signal)
 
-#reward forward velocity
-# v_world ​= q_world​⋅v_body​⋅q_world^(−1​)
-def forward_reward(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg) -> torch.Tensor:
-    asset: RigidObject = env.scene[asset_cfg.name]
-    
-    quat = asset.data.root_state_w[:, 3:7]
-    vel_world  = asset.data.root_state_w[:, 7:10]
-
-    vel_body = quat_rotate_inverse(quat, vel_world)
-
-    v_forward = vel_body[:, 0]
-
-    return torch.tanh(v_forward)
-
-
- 
-
-#reward going at a certain velocity based on 
-
-#reward yaw rate/orientation changes
 
 #fall penalty
+def fall_penalty(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg, min_height) -> torch.Tensor:
+    asset: RigidObject = env.scene[asset_cfg.name]
+    
+    #height
+    z = asset.data.root_state_w[:,2]
+    height_penalty = (z < min_height).float()
+    
+    #angular velocity roll
+    wx, wy, _ = asset.data.root_state_w[:, 10:13]
+    angular_velocity_penalty = (wx**2 + wy**2)
+    
+    #linear velocity z
+    vz = asset.data.root_state_w[:, 9]
+    linear_velocity_penalty = torch.relu(-vz)
+    
+    #Can change weights for fine tuning 
+    penalty = 10.0 * height_penalty + 0.1 * angular_velocity_penalty + 0.5 * linear_velocity_penalty
+
+    return -penalty
+
+
+#reward yaw rate/orientation changes
