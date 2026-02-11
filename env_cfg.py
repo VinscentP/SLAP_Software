@@ -95,7 +95,9 @@ class ActionsCfg:
         use_default_offset=True,
         asset_name="robot", 
         debug_vis=True,
-        clip= ,                 #may have to clip knee joint so it doesn't overextend
+        clip= {".*_knee_joint": (-1.5, 0.0),
+               ".*_pitch_joint": (-0.8, 0.8),
+               ".*_roll_joint": (-0.8, 1.5),},                 #may have to clip knee joint so it doesn't overextend
         joint_names=
             ["fl_pitch_joint", "fl_roll,joint", "fl_knee_joint", 
             "fr_pitch_joint", "fr_roll,joint", "fr_knee_joint",
