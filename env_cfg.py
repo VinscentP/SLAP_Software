@@ -211,7 +211,7 @@ class ReachEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the reach end-effector pose tracking environment."""
 
     # Scene settings - how many robots, how far apart?
-    scene = ReachSceneCfg(num_envs=2000, env_spacing=2.5)
+    scene = ReachSceneCfg(num_envs=512, env_spacing=2.5)
     # Basic settings
     observations = ObservationsCfg()
     actions = ActionsCfg()
@@ -225,12 +225,12 @@ class ReachEnvCfg(ManagerBasedRLEnvCfg):
     def __post_init__(self):
         """Post initialization."""
         # general settings
-        self.decimation = 2
+        self.decimation = 4                         #after decimation number of physics steps policy outputs action
         self.sim.render_interval = self.decimation
-        self.episode_length_s = 3.0
+        self.episode_length_s = 12.0
         self.viewer.eye = (3.5, 3.5, 3.5)
         # simulation settings
-        self.sim.dt = 1.0 / 60.0
+        self.sim.dt = 1.0 / 240.0                   #around 4.17 ms physics step
 
 @configclass
 class ReachEnvCfg_PLAY(ReachEnvCfg):
