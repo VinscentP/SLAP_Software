@@ -64,4 +64,5 @@ def fall_penalty(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg, min_height) 
     return -penalty
 
 
+
 #reward yaw rate/orientation changes
