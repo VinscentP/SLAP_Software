@@ -96,7 +96,11 @@ class ActionsCfg:
         asset_name="robot", 
         debug_vis=True,
         clip= ,                 #may have to clip knee joint so it doesn't overextend
-        joint_names=["shoulder_pan_joint", "shoulder_lift_joint", "elbow_joint", "wrist_1_joint", "wrist_2_joint", "wrist_3_joint"], 
+        joint_names=
+            ["fl_pitch_joint", "fl_roll,joint", "fl_knee_joint", 
+            "fr_pitch_joint", "fr_roll,joint", "fr_knee_joint",
+            "bl_pitch_joint", "bl_roll,joint", "bl_knee_joint",
+            "br_pitch_joint", "br_roll,joint", "br_knee_joint",], 
         scale=.5, 
     )
 
