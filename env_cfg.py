@@ -18,6 +18,7 @@ ISAAC_NUCLEUS_DIR = f"{NUCLEUS_ASSET_ROOT_DIR}/Isaac"
 import isaaclab.sim as sim_utils
 from isaaclab.assets import AssetBaseCfg
 from isaaclab.envs import ManagerBasedRLEnvCfg
+from isaaclab.assets import ArticulationCfg as ArticulationCfg
 from isaaclab.managers import ActionTermCfg as ActionTerm
 from isaaclab.managers import CurriculumTermCfg as CurrTerm
 from isaaclab.managers import EventTermCfg as EventTerm
@@ -32,17 +33,6 @@ from isaaclab.utils.noise import AdditiveUniformNoiseCfg as Unoise
 from isaaclab.sim.spawners.from_files.from_files_cfg import GroundPlaneCfg
 
 from . import mdp
-
-##
-# Pre-defined configs
-##
-
-#from .ur_gripper import UR_GRIPPER_CFG  # isort:skip
-
-#-----------------------------------------
-# import boston dynamics dog
-#-----------------------------------------
-
 
 ##
 # Scene definition
@@ -60,7 +50,11 @@ class ReachSceneCfg(InteractiveSceneCfg):
     )
 
     # robot
-    robot = UR_GRIPPER_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
+    robot = ArticulationCfg(
+        prim_path="/World/spot",
+        spawn=sim_utils.UsdFileCfg(
+            usd_path="path/to/dog.usd"),
+    )
     
     # lights
     dome_light = AssetBaseCfg(
@@ -95,24 +89,26 @@ class ActionsCfg:
         use_default_offset=True,
         asset_name="robot", 
         debug_vis=True,
-        clip= {".*_knee_joint": (-1.5, 0.0),
-               ".*_pitch_joint": (-0.8, 0.8),
-               ".*_roll_joint": (-0.8, 1.5),},                 #may have to clip knee joint so it doesn't overextend
+        clip= {
+            ".*_hx": (-0.785, 0.785),
+            ".*_hy": (-1.0, 2.3),
+            ".*_kn": (-2.79, -0.247),},                 #may have to clip knee joint so it doesn't overextend
         joint_names=
-            ["fl_pitch_joint", "fl_roll,joint", "fl_knee_joint", 
-            "fr_pitch_joint", "fr_roll,joint", "fr_knee_joint",
-            "bl_pitch_joint", "bl_roll,joint", "bl_knee_joint",
-            "br_pitch_joint", "br_roll,joint", "br_knee_joint",], 
+            ["fl_hx", "fl_hy", "fl_kn", "fl_ank", 
+            "fr_hx", "fr_hy", "fr_kn", "fr_ank",
+            "hl_hx", "hl_hy", "hl_kn", "hl_ank",
+            "hl_hx", "hr_hy", "hr_kn", "hr_ank",], 
         scale=.5, 
     )
 
 @configclass
 class CommandsCfg:
     """Command terms for the MDP."""
-
+    #UniformPoseCommandCfg
+    #TerrainBasedPose2dCommandCfg
     ee_pose = mdp.UniformPoseCommandCfg(
         asset_name="robot",
-        body_name="ee_link", # This is the body in the USD file
+        body_name="body", # This is the body in the USD file
         resampling_time_range=(4.0, 4.0),
         debug_vis=True,
         # These are essentially ranges of poses that can be commanded for the end of the robot during training
