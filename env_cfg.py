@@ -104,22 +104,23 @@ class ActionsCfg:
 @configclass
 class CommandsCfg:
     """Command terms for the MDP."""
-    #UniformPoseCommandCfg
-    #TerrainBasedPose2dCommandCfg
-    ee_pose = mdp.UniformPoseCommandCfg(
-        asset_name="robot",
-        body_name="body", # This is the body in the USD file
-        resampling_time_range=(4.0, 4.0),
-        debug_vis=True,
-        # These are essentially ranges of poses that can be commanded for the end of the robot during training
-        ranges=mdp.UniformPoseCommandCfg.Ranges(
-            pos_x=(0.35, 0.65),
-            pos_y=(-0.2, 0.2),
-            pos_z=(0.15, 0.5),
-            roll=(0.0, 0.0),
-            pitch=(math.pi / 2, math.pi / 2),
-            yaw=(-3.14, 3.14),
+    #NullCommandCfg
+    null_command = mdp.NullCommandCfg(
+        resampling_time_range=(1,7),
+    )
+    #UniformVelocityCommandCfg
+    velocity_command = mdp.UniformVelocityCommandCfg(
+        asset_name="spot",
+        ranges=mdp.UniformPoseCommandCfg(
+            lin_vel_x=(0.0, 1.0),
+            lin_vel_y=(-1.0, 1.0),
+            ang_vel_z=(-1.0, 1.0),
+            heading=(-3.14, 3.14),
         ),
+        resampling_time_range=(1,7),
+        rel_standing_envs=0.1,
+        heading_command=True,
+        rel_heading_envs=0.3,
     )
 
 @configclass
