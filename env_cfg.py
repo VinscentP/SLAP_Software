@@ -5,6 +5,7 @@
 
 import math
 import carb
+from rewards import orientation_reward
 
 NUCLEUS_ASSET_ROOT_DIR = carb.settings.get_settings().get("/persistent/isaac/asset_root/cloud")
 """Path to the root directory on the Nucleus Server."""
@@ -132,10 +133,15 @@ class ObservationsCfg:
         """Observations for policy group."""
 
         # observation terms (order preserved)
-        joint_pos = ObsTerm(func=mdp.joint_pos_rel, noise=Unoise(n_min=-0.01, n_max=0.01))
-        joint_vel = ObsTerm(func=mdp.joint_vel_rel, noise=Unoise(n_min=-0.01, n_max=0.01))
-        pose_command = ObsTerm(func=mdp.generated_commands, params={"command_name": "ee_pose"})
+        projected_gravity = ObsTerm(func=mdp.projected_gravity, noise=Unoise(n_min=-0.05, n_max=0.05))
+        base_ang_vel = ObsTerm(func=mdp.base_ang_vel, noise=Unoise(n_min=-0.2, n_max=0.2))
+        base_lin_vel = ObsTerm(func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1))
+        joint_pos_rel = ObsTerm(func=mdp.joint_pos_rel, noise=Unoise(n_min=-0.01, n_max=0.01))
+        joint_vel_rel = ObsTerm(func=mdp.joint_vel_rel, noise=Unoise(n_min=-1.5, n_max=1.5))
+        velocity_command = ObsTerm(func=mdp.generated_commands, params={"command_name": "velocity_command"})
         actions = ObsTerm(func=mdp.last_action)
+        #height_scan
+        #imu_*
 
         def __post_init__(self):
             self.enable_corruption = True
@@ -148,38 +154,59 @@ class ObservationsCfg:
 class EventCfg:
     """Configuration for events."""
 
-    reset_robot_joints = EventTerm(
-        func=mdp.reset_joints_by_scale,
-        mode="reset",
+    
+    random_forces = EventTerm(
+        func=mdp.apply_external_force_torque, 
+        mode="interval", 
+        interval_range_s=[4.0, 6.0],
         params={
-            "position_range": (0.75, 1.25),
-            "velocity_range": (0.0, 0.0),
-        },
+            "asset_cfg": SceneEntityCfg("spot", body_names="base"),
+            "force_range": {
+                "x": (-50.0, 50.0), "y": (-50.0, 50.0), "z": (-50.0, 50.0),
+            },
+            "torque_range": {
+                "x": (-20.0, 20.0), "y": (-20.0, 20.0), "z": (-10.0, 10.0),
+            },
+        } 
     )
 
+    reset_joints = EventTerm(
+        func=mdp.reset_joints_by_offset,
+        mode="reset",
+        params={
+            "asset_cfg": SceneEntityCfg("spot"),
+            "position_range": (-0.3, 0.3),
+            "velocity_range": (-0.5, 0.5),
+        },
+    )
+    
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
 
-    # task terms
-    end_effector_position_tracking = RewTerm(
-        func=mdp.position_command_error,
-        weight=-0.2,
-        params={"asset_cfg": SceneEntityCfg("robot", body_names=["ee_link"]), "command_name": "ee_pose"},
+    orientation_reward = RewTerm(
+        func=mdp.orientation_reward, weight=2.0, 
+        params={"asset_cfg": SceneEntityCfg("robot")}, 
     )
-    end_effector_position_tracking_fine_grained = RewTerm(
-        func=mdp.position_command_error_tanh,
-        weight=0.1,
-        params={"asset_cfg": SceneEntityCfg("robot", body_names=["ee_link"]), "std": 0.1, "command_name": "ee_pose"},
-    )
-
-    # action penalty
-    action_rate = RewTerm(func=mdp.action_rate_l2, weight=-0.0001)
-    joint_vel = RewTerm(
-        func=mdp.joint_vel_l2,
-        weight=-0.0001,
+    self_leveling_reward = RewTerm(
+        func=mdp.self_leveling_reward, weight=1.0,
         params={"asset_cfg": SceneEntityCfg("robot")},
     )
+    height_reward = RewTerm(
+        func=mdp.height_reward, weight=0.5,
+         params={
+            "asset_cfg": SceneEntityCfg("robot"),  
+            "desired_height": 0.3,                      #CHECK default height position              
+        },
+    )
+    fall_penalty = RewTerm(
+        func=mdp.fall_penalty, weight=1.0,
+        params={
+            "asset_cfg": SceneEntityCfg("robot"), 
+            "min_height": 0.15,                  
+        },
+    )
+
 
 @configclass
 class TerminationsCfg:
