@@ -88,7 +88,7 @@ class ActionsCfg:
 
     robot_action: ActionTerm = mdp.JointPositionActionCfg(
         use_default_offset=True,
-        asset_name="robot", 
+        asset_name="spot", 
         debug_vis=True,
         clip= {
             ".*_hx": (-0.785, 0.785),
@@ -213,17 +213,24 @@ class TerminationsCfg:
     """Termination terms for the MDP."""
 
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
+    body_height = DoneTerm(func=mdp.root_height_below_minimum, 
+        params={
+            "minimum_height": 0.15, 
+            "asset_cfg": SceneEntityCfg("spot"),
+        })
 
 @configclass
 class CurriculumCfg:
     """Curriculum terms for the MDP."""
 
-    action_rate = CurrTerm(
-        func=mdp.modify_reward_weight, params={"term_name": "action_rate", "weight": -0.005, "num_steps": 4500}
+    orientation_reward = CurrTerm(
+        func=mdp.modify_reward_weight,
+        params={"term_name": "orientation_reward", "weight": 2.0, "num_steps": 4500},
     )
 
-    joint_vel = CurrTerm(
-        func=mdp.modify_reward_weight, params={"term_name": "joint_vel", "weight": -0.001, "num_steps": 4500}
+    height_reward = CurrTerm(
+        func=mdp.modify_reward_weight,
+        params={"term_name": "height_reward", "weight": 1.0, "num_steps": 4500},
     )
 
 ##
