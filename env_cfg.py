@@ -112,7 +112,8 @@ class CommandsCfg:
     #UniformVelocityCommandCfg
     velocity_command = mdp.UniformVelocityCommandCfg(
         asset_name="spot",
-        ranges=mdp.UniformPoseCommandCfg(
+        #fix ranges
+        ranges=mdp.UniformVelocityCommandCfg.Ranges(
             lin_vel_x=(0.0, 1.0),
             lin_vel_y=(-1.0, 1.0),
             ang_vel_z=(-1.0, 1.0),
@@ -186,23 +187,23 @@ class RewardsCfg:
 
     orientation_reward = RewTerm(
         func=mdp.orientation_reward, weight=2.0, 
-        params={"asset_cfg": SceneEntityCfg("robot")}, 
+        params={"asset_cfg": SceneEntityCfg("spot")}, 
     )
     self_leveling_reward = RewTerm(
         func=mdp.self_leveling_reward, weight=1.0,
-        params={"asset_cfg": SceneEntityCfg("robot")},
+        params={"asset_cfg": SceneEntityCfg("spot")},
     )
     height_reward = RewTerm(
         func=mdp.height_reward, weight=0.5,
          params={
-            "asset_cfg": SceneEntityCfg("robot"),  
+            "asset_cfg": SceneEntityCfg("spot"),  
             "desired_height": 0.3,                      #CHECK default height position              
         },
     )
     fall_penalty = RewTerm(
         func=mdp.fall_penalty, weight=1.0,
         params={
-            "asset_cfg": SceneEntityCfg("robot"), 
+            "asset_cfg": SceneEntityCfg("spot"), 
             "min_height": 0.15,                  
         },
     )
