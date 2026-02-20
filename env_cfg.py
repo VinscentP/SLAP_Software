@@ -3,24 +3,30 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
+
 import math
 import carb
-from rewards import orientation_reward
+from .mdp.rewards import orientation_reward
+
 
 NUCLEUS_ASSET_ROOT_DIR = carb.settings.get_settings().get("/persistent/isaac/asset_root/cloud")
 """Path to the root directory on the Nucleus Server."""
 
+
 NVIDIA_NUCLEUS_DIR = f"{NUCLEUS_ASSET_ROOT_DIR}/NVIDIA"
 """Path to the root directory on the NVIDIA Nucleus Server."""
+
 
 ISAAC_NUCLEUS_DIR = f"{NUCLEUS_ASSET_ROOT_DIR}/Isaac"
 """Path to the ``Isaac`` directory on the NVIDIA Nucleus Server."""
 
+
 import isaaclab.sim as sim_utils
 from isaaclab.assets import AssetBaseCfg
+from isaaclab.actuators import ImplicitActuatorCfg
 from isaaclab.envs import ManagerBasedRLEnvCfg
-from isaaclab.assets import ArticulationCfg as ArticulationCfg
 from isaaclab.managers import ActionTermCfg as ActionTerm
+from isaaclab.assets import ArticulationCfg as ArticulationCfg
 from isaaclab.managers import CurriculumTermCfg as CurrTerm
 from isaaclab.managers import EventTermCfg as EventTerm
 from isaaclab.managers import ObservationGroupCfg as ObsGroup
@@ -33,15 +39,31 @@ from isaaclab.utils import configclass
 from isaaclab.utils.noise import AdditiveUniformNoiseCfg as Unoise
 from isaaclab.sim.spawners.from_files.from_files_cfg import GroundPlaneCfg
 
+
 from . import mdp
+
+
+##
+# Pre-defined configs
+##
+
+
+#from .ur_gripper import UR_GRIPPER_CFG  # isort:skip
+
+
+
 
 ##
 # Scene definition
 ##
 
+
+
+
 @configclass
-class ReachSceneCfg(InteractiveSceneCfg):
+class BostonrlPhamSceneCfg(InteractiveSceneCfg):
     """Configuration for a scene."""
+
 
     # world
     ground = AssetBaseCfg(
@@ -50,18 +72,38 @@ class ReachSceneCfg(InteractiveSceneCfg):
         init_state=AssetBaseCfg.InitialStateCfg(pos=(0.0, 0.0, -1.05)),
     )
 
+
     # robot
     robot = ArticulationCfg(
-        prim_path="/World/spot",
+        prim_path="/World/robot",
         spawn=sim_utils.UsdFileCfg(
-            usd_path="path/to/dog.usd"),
+            usd_path="C:/Users/danym/Documents/issac_sim_projects/boston_pham.usd",
+        ),
+        init_state=ArticulationCfg.InitialStateCfg(
+            pos=(0.0, 0.0, 0.0),
+            joint_pos={
+                "fl_kn": -1.0,   # within [-2.793, -0.247]
+                "fr_kn": -1.0,
+                "hl_kn": -1.0,
+                "hr_kn": -1.0,
+            }
+        ),
+        actuators={
+            "robot_legs": ImplicitActuatorCfg(
+                joint_names_expr=[".*"],
+                stiffness=60.0,
+                damping=6.0,
+                effort_limit_sim=80.0,
+            ),
+        },
     )
-    
+   
     # lights
     dome_light = AssetBaseCfg(
         prim_path="/World/DomeLight",
         spawn=sim_utils.DomeLightCfg(color=(0.9, 0.9, 0.9), intensity=5000.0),
     )
+
 
     table = AssetBaseCfg(
         prim_path="{ENV_REGEX_NS}/Table",
@@ -71,6 +113,7 @@ class ReachSceneCfg(InteractiveSceneCfg):
         init_state=AssetBaseCfg.InitialStateCfg(pos=(0.55, 0.0, 0.0), rot=(0.70711, 0.0, 0.0, 0.70711)),
     )
 
+
     # plane
     plane = AssetBaseCfg(
         prim_path="/World/GroundPlane",
@@ -78,29 +121,43 @@ class ReachSceneCfg(InteractiveSceneCfg):
         spawn=GroundPlaneCfg(),
     )
 
+
 ##
 # MDP settings
 ##
+
+
+
 
 @configclass
 class ActionsCfg:
     """Action specifications for the MDP."""
 
+
     robot_action: ActionTerm = mdp.JointPositionActionCfg(
-        use_default_offset=True,
-        asset_name="spot", 
+        use_default_offset=False,
+        asset_name="robot",
         debug_vis=True,
         clip= {
             ".*_hx": (-0.785, 0.785),
             ".*_hy": (-1.0, 2.3),
-            ".*_kn": (-2.79, -0.247),},                 #may have to clip knee joint so it doesn't overextend
+            ".*_kn": (-2.79, -0.247),
+        },                 #may have to clip knee joint so it doesn't overextend
+     
         joint_names=
-            ["fl_hx", "fl_hy", "fl_kn", "fl_ank", 
-            "fr_hx", "fr_hy", "fr_kn", "fr_ank",
-            "hl_hx", "hl_hy", "hl_kn", "hl_ank",
-            "hl_hx", "hr_hy", "hr_kn", "hr_ank",], 
-        scale=.5, 
+            ["fl_hx", "fl_hy", "fl_kn",
+            "fr_hx", "fr_hy", "fr_kn",
+            "hl_hx", "hl_hy", "hl_kn",
+            "hr_hx", "hr_hy", "hr_kn",],
+        scale=.5,
+        offset={  # start knees in the middle of the safe range
+            "fl_kn": -1.5,
+            "fr_kn": -1.5,
+            "hl_kn": -1.5,
+            "hr_kn": -1.5,
+        },
     )
+
 
 @configclass
 class CommandsCfg:
@@ -111,8 +168,7 @@ class CommandsCfg:
     )
     #UniformVelocityCommandCfg
     velocity_command = mdp.UniformVelocityCommandCfg(
-        asset_name="spot",
-        #fix ranges
+        asset_name="robot",
         ranges=mdp.UniformVelocityCommandCfg.Ranges(
             lin_vel_x=(0.0, 1.0),
             lin_vel_y=(-1.0, 1.0),
@@ -125,13 +181,16 @@ class CommandsCfg:
         rel_heading_envs=0.3,
     )
 
+
 @configclass
 class ObservationsCfg:
     """Observation specifications for the MDP."""
 
+
     @configclass
     class PolicyCfg(ObsGroup):
         """Observations for policy group."""
+
 
         # observation terms (order preserved)
         projected_gravity = ObsTerm(func=mdp.projected_gravity, noise=Unoise(n_min=-0.05, n_max=0.05))
@@ -144,106 +203,120 @@ class ObservationsCfg:
         #height_scan
         #imu_*
 
+
         def __post_init__(self):
             self.enable_corruption = True
             self.concatenate_terms = True
 
+
     # observation groups
     policy: PolicyCfg = PolicyCfg()
+
+
+
+
+
 
 @configclass
 class EventCfg:
     """Configuration for events."""
-
-    
     random_forces = EventTerm(
-        func=mdp.apply_external_force_torque, 
-        mode="interval", 
+        func=mdp.apply_external_force_torque,
+        mode="interval",
         interval_range_s=[4.0, 6.0],
         params={
-            "asset_cfg": SceneEntityCfg("spot", body_names="base"),
-            "force_range": {
-                "x": (-50.0, 50.0), "y": (-50.0, 50.0), "z": (-50.0, 50.0),
-            },
-            "torque_range": {
-                "x": (-20.0, 20.0), "y": (-20.0, 20.0), "z": (-10.0, 10.0),
-            },
-        } 
-    )
+            "asset_cfg": SceneEntityCfg("robot", body_names="body"),
+            "force_range": (-50.0, 50.0),      
+            "torque_range": (-20.0, 20.0),    
+    },
+)
 
-    reset_joints = EventTerm(
-        func=mdp.reset_joints_by_offset,
-        mode="reset",
-        params={
-            "asset_cfg": SceneEntityCfg("spot"),
-            "position_range": (-0.3, 0.3),
-            "velocity_range": (-0.5, 0.5),
-        },
-    )
-    
+
+    #reset_joints = EventTerm(
+    #    func=mdp.reset_joints_by_offset,
+    #    mode="reset",
+    #    params={
+    #        "asset_cfg": SceneEntityCfg("robot"),
+    #        "position_range": (-0.05, 0.05),
+    #        "velocity_range": (-0.05, 0.05),
+    #    },
+    #)
+   
+
+
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
 
+
     orientation_reward = RewTerm(
-        func=mdp.orientation_reward, weight=2.0, 
-        params={"asset_cfg": SceneEntityCfg("spot")}, 
+        func=mdp.orientation_reward, weight=2.0,
+        params={"asset_cfg": SceneEntityCfg("robot")},
     )
     self_leveling_reward = RewTerm(
         func=mdp.self_leveling_reward, weight=1.0,
-        params={"asset_cfg": SceneEntityCfg("spot")},
+        params={"asset_cfg": SceneEntityCfg("robot")},
     )
     height_reward = RewTerm(
         func=mdp.height_reward, weight=0.5,
          params={
-            "asset_cfg": SceneEntityCfg("spot"),  
+            "asset_cfg": SceneEntityCfg("robot"),  
             "desired_height": 0.3,                      #CHECK default height position              
         },
     )
     fall_penalty = RewTerm(
         func=mdp.fall_penalty, weight=1.0,
         params={
-            "asset_cfg": SceneEntityCfg("spot"), 
+            "asset_cfg": SceneEntityCfg("robot"),
             "min_height": 0.15,                  
         },
     )
+
+
 
 
 @configclass
 class TerminationsCfg:
     """Termination terms for the MDP."""
 
+
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
-    body_height = DoneTerm(func=mdp.root_height_below_minimum, 
+    body_height = DoneTerm(func=mdp.root_height_below_minimum,
         params={
-            "minimum_height": 0.15, 
-            "asset_cfg": SceneEntityCfg("spot"),
+            "minimum_height": 0.15,
+            "asset_cfg": SceneEntityCfg("robot"),
         })
+
+
+##
+# Environment configuration
+##
+
 
 @configclass
 class CurriculumCfg:
     """Curriculum terms for the MDP."""
+
 
     orientation_reward = CurrTerm(
         func=mdp.modify_reward_weight,
         params={"term_name": "orientation_reward", "weight": 2.0, "num_steps": 4500},
     )
 
+
     height_reward = CurrTerm(
         func=mdp.modify_reward_weight,
         params={"term_name": "height_reward", "weight": 1.0, "num_steps": 4500},
     )
 
-##
-# Environment configuration
-##
 
 @configclass
-class ReachEnvCfg(ManagerBasedRLEnvCfg):
+class BostonrlPhamEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the reach end-effector pose tracking environment."""
 
+
     # Scene settings - how many robots, how far apart?
-    scene = ReachSceneCfg(num_envs=512, env_spacing=2.5)
+    scene = BostonrlPhamSceneCfg(num_envs=1, env_spacing=2.5)
     # Basic settings
     observations = ObservationsCfg()
     actions = ActionsCfg()
@@ -253,6 +326,7 @@ class ReachEnvCfg(ManagerBasedRLEnvCfg):
     terminations = TerminationsCfg()
     events = EventCfg()
     curriculum = CurriculumCfg()
+
 
     def __post_init__(self):
         """Post initialization."""
@@ -264,8 +338,9 @@ class ReachEnvCfg(ManagerBasedRLEnvCfg):
         # simulation settings
         self.sim.dt = 1.0 / 240.0                   #around 4.17 ms physics step
 
+
 @configclass
-class ReachEnvCfg_PLAY(ReachEnvCfg):
+class BostonrlPhamEnvCfg_PLAY(BostonrlPhamEnvCfg):
     def __post_init__(self):
         # post init of parent
         super().__post_init__()
@@ -274,3 +349,4 @@ class ReachEnvCfg_PLAY(ReachEnvCfg):
         self.scene.env_spacing = 2.5
         # disable randomization for play
         self.observations.policy.enable_corruption = False
+
