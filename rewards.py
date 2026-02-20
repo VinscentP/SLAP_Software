@@ -25,7 +25,7 @@ def orientation_reward(env: "ManagerBasedRLEnv", asset_cfg: SceneEntityCfg) -> t
 def height_reward(env: "ManagerBasedRLEnv", asset_cfg: SceneEntityCfg, desired_height) -> torch.Tensor:
     asset: Articulation = env.scene[asset_cfg.name]
     
-    height = asset.data.root_state_w[:, :2]
+    height = asset.data.root_state_w[:, 2]
     height_error = height - desired_height
 
     return torch.exp(-2.0 * height_error**2)
